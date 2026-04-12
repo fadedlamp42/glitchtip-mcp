@@ -1,0 +1,47 @@
+{
+  "name": "glitchtip-mcp",
+  "version": "1.0.0",
+  "description": "Complete MCP server for GlitchTip — error tracking, uptime monitoring, performance, logs, and project management via the Model Context Protocol",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "glitchtip-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "tsc": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "glitchtip",
+    "error-tracking",
+    "sentry-alternative",
+    "uptime-monitoring",
+    "performance-monitoring",
+    "ai",
+    "llm",
+    "claude"
+  ],
+  "author": "adfdev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adfdev/glitchtip-mcp"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}
