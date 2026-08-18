@@ -2,6 +2,28 @@ import { request } from "../client.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+/**
+ * GlitchTip's bulk mutate endpoints treat "no id list and no search query" as
+ * "every issue in the organization". that is a real capability of the API and a
+ * catastrophic default for a tool call, so an unscoped bulk operation is refused
+ * and the caller has to state the org-wide intent explicitly.
+ */
+function assertBulkScope(
+  toolName: string,
+  id: string[] | undefined,
+  query: string | undefined,
+): void {
+  const hasIds = id !== undefined && id.length > 0;
+  const hasQuery = query !== undefined && query !== "";
+  if (!hasIds && !hasQuery) {
+    throw new Error(
+      `${toolName} refused: neither 'id' nor 'query' was supplied, which GlitchTip ` +
+        `interprets as EVERY issue in the organization. pass an explicit 'id' array, ` +
+        `or pass a 'query' such as "is:unresolved" if an org-wide change is genuinely intended.`,
+    );
+  }
+}
+
 export function registerIssueTools(server: McpServer): void {
   server.tool(
     "list_organization_issues",
@@ -86,11 +108,16 @@ export function registerIssueTools(server: McpServer): void {
       status: z.enum(["resolved", "unresolved", "ignored"]).optional().describe("New status"),
     },
     async ({ organization_slug, id, query, status }) => {
+      assertBulkScope("bulk_update_issues", id, query);
+      // `id` and `query` SELECT the issues and belong in the query string; only
+      // the mutation itself goes in the body. sending `id` in the body leaves the
+      // request unscoped and silently mutates the whole organization.
       const data = await request(
         `/api/0/organizations/${organization_slug}/issues/`,
         {
           method: "PUT",
-          body: { id, query, status },
+          query: { id, query },
+          body: { status },
         },
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -106,11 +133,14 @@ export function registerIssueTools(server: McpServer): void {
       query: z.string().optional().describe("Search query to match issues"),
     },
     async ({ organization_slug, id, query }) => {
+      assertBulkScope("bulk_delete_issues", id, query);
+      // same scoping rule as bulk_update_issues, and the stakes are higher here:
+      // an unscoped DELETE destroys every issue in the organization.
       await request(
         `/api/0/organizations/${organization_slug}/issues/`,
         {
           method: "DELETE",
-          body: { id, query },
+          query: { id, query },
         },
       );
       return { content: [{ type: "text", text: "Issues deleted." }] };

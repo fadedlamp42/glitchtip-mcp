@@ -31,7 +31,12 @@ export function getConfig(): GlitchTipConfig {
 export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
-  query?: Record<string, string | number | boolean | undefined>;
+  /**
+   * query string parameters. an array value is emitted as a REPEATED key
+   * (`?id=1&id=2`), which is how GlitchTip's bulk endpoints expect to receive
+   * a list of issue ids.
+   */
+  query?: Record<string, string | number | boolean | string[] | undefined>;
   /** For multipart uploads. */
   formData?: FormData;
 }
@@ -47,7 +52,12 @@ export async function request<T = unknown>(
   if (opts.query) {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(opts.query)) {
-      if (value !== undefined && value !== "") {
+      const isPresent = value !== undefined && value !== "";
+      // arrays repeat the key so the server sees a list, never a stringified array.
+      if (isPresent && Array.isArray(value)) {
+        for (const item of value) params.append(key, String(item));
+      }
+      if (isPresent && !Array.isArray(value)) {
         params.set(key, String(value));
       }
     }
